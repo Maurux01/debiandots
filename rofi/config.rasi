@@ -1,0 +1,52 @@
+* {
+    bg-col: #282828;
+    bg-col-light: #3c3836;
+    fg-col: #ebdbb2;
+    accent: #fabd2f;
+    font: "JetBrainsMono Nerd Font 12";
+}
+
+window {
+    width: 600px;
+    border: 2px;
+    border-color: @accent;
+    background-color: @bg-col;
+    border-radius: 12px;
+}
+
+mainbox {
+    background-color: transparent;
+}
+
+inputbar {
+    children: [prompt, entry];
+    background-color: @bg-col-light;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+prompt {
+    text-color: @accent;
+}
+
+entry {
+    text-color: @fg-col;
+}
+
+listview {
+    columns: 1;
+    lines: 8;
+    background-color: transparent;
+    padding: 10px;
+}
+
+element {
+    padding: 10px;
+    border-radius: 6px;
+    text-color: @fg-col;
+}
+
+element selected {
+    background-color: @accent;
+    text-color: @bg-col;
+}

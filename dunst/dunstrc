@@ -1,0 +1,25 @@
+[global]
+font = JetBrainsMono Nerd Font 10
+format = "<b>%s</b>\n%b"
+alignment = center
+vertical_alignment = center
+width = 300
+height = 100
+offset = 10x20
+origin = top-right
+frame_width = 2
+frame_color = "#fabd2f"
+separator_color = frame
+
+[urgency_low]
+background = "#282828"
+foreground = "#ebdbb2"
+
+[urgency_normal]
+background = "#282828"
+foreground = "#ebdbb2"
+
+[urgency_critical]
+background = "#282828"
+foreground = "#fb4934"
+frame_color = "#fb4934"

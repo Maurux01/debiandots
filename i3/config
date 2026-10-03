@@ -1,0 +1,89 @@
+# ==========================================
+# I3WM CONFIGURATION (Theme: Gruvbox Dark)
+# ==========================================
+
+set $mod Mod4
+set $term kitty
+set $filemanager thunar
+set $launcher rofi -show drun -theme-str 'window {width: 50%;} listview {columns: 1;}'
+
+# --- AUTOSTART ---
+exec --no-startup-id lxpolkit
+exec --no-startup-id nm-applet
+exec --no-startup-id xfce4-power-manager
+exec --no-startup-id dunst
+exec --no-startup-id picom -b
+exec --no-startup-id polybar main &
+
+# Default static wallpaper (change the path to your image)
+exec --no-startup-id ~/.config/i3/static-wp.sh ~/.config/i3/wallpaper.jpg
+
+# --- APPEARANCE AND BORDERS ---
+new_window pixel 2
+new_float normal
+hide_edge_borders both
+
+# Colors (Gruvbox Dark Palette)
+# bg: #282828, bg-alt: #3c3836, fg: #ebdbb2, accent: #fabd2f, urgent: #fb4934, muted: #a89984
+
+# class                 border  backgr. text    indicator child_border
+client.focused          #fabd2f #282828 #ebdbb2 #fabd2f   #fabd2f
+client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836   #3c3836
+client.unfocused        #282828 #282828 #a89984 #282828   #282828
+client.urgent           #fb4934 #fb4934 #282828 #fb4934   #fb4934
+
+# --- KEYBINDS ---
+
+# Terminal and App Launcher
+bindsym $mod+Return exec $term
+bindsym $mod+d exec $launcher
+
+# File Manager
+bindsym $mod+e exec $filemanager
+
+# Close window
+bindsym $mod+q kill
+
+# Navigation and Movement (Vim-style)
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+
+# Window splits
+bindsym $mod+v split v
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+f fullscreen toggle
+bindsym $mod+s layout stacking
+bindsym $mod+w layout tabbed
+bindsym $mod+Shift+e layout toggle split
+
+# --- HARDWARE CONTROL ---
+
+# Brightness (brightnessctl)
+bindsym XF86MonBrightnessUp exec brightnessctl set +5%
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+
+# Volume (pactl for quick shortcuts, pavucontrol for GUI)
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym $mod+Shift+v exec pavucontrol
+
+# --- WALLPAPER MANAGEMENT ---
+
+# Static wallpaper (Mod + w)
+bindsym $mod+w exec ~/.config/i3/static-wp.sh
+
+# Live wallpaper (Mod + Shift + w) - Requires a video file
+bindsym $mod+Shift+w exec ~/.config/i3/live-wp.sh ~/.config/i3/live-wallpaper.mp4
+
+# --- SYSTEM ---
+bindsym $mod+Shift+r reload
+bindsym $mod+Shift+c restart
+bindsym $mod+Shift+x exec "i3-nagbar -t warning -m 'Exit i3?' -b 'Yes' 'i3-msg exit'"
