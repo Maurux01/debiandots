@@ -13,7 +13,9 @@ if [ ! -f "$WALLPAPER" ]; then
     msg="static-wp: no existe $WALLPAPER. Pon tu imagen ahi o pasa la ruta: static-wp.sh ~/imagen.jpg"
     echo "$msg" >&2
     command -v notify-send >/dev/null 2>&1 && notify-send "i3 wallpaper" "$msg"
-    exit 1
+    # Fallback: fondo solido gruvbox para no dejar la pantalla negra/rota en autostart
+    command -v xsetroot >/dev/null 2>&1 && xsetroot -solid "#282828" || true
+    exit 0
 fi
 
 if command -v feh >/dev/null 2>&1; then
@@ -22,6 +24,8 @@ elif command -v xwallpaper >/dev/null 2>&1; then
     exec xwallpaper --zoom "$WALLPAPER"
 elif command -v nitrogen >/dev/null 2>&1; then
     exec nitrogen --set-zoom-fill --save "$WALLPAPER"
+elif command -v xsetroot >/dev/null 2>&1; then
+    exec xsetroot -solid "#282828"
 else
     echo "static-wp: instala feh (sudo apt install feh) o xwallpaper/nitrogen" >&2
     exit 1

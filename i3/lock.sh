@@ -49,6 +49,7 @@ elif command -v i3lock >/dev/null 2>&1; then
         i3lock -n -c "$BG"
     fi
     reanudar_dunst
+    exit 0
 else
     msg_falta
 fi
@@ -95,3 +96,4 @@ pausar_dunst
     --greeter-text="gruvbox" \
     --indicator
 reanudar_dunst
+exit 0

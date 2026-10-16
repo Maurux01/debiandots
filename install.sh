@@ -26,7 +26,7 @@ run_net() {
     fi
 }
 
-DEPS="i3 polybar rofi dunst picom feh i3lock xss-lock xautolock brightnessctl pavucontrol pulseaudio-utils maim xclip xdotool mpv redshift git curl wget tar xz-utils unzip fontconfig libnotify-bin libglib2.0-bin iproute2 lxpolkit network-manager-gnome xfce4-power-manager thunar kitty sassc gtk2-engines-murrine gnome-themes-extra papirus-icon-theme x11-xserver-utils"
+DEPS="i3 polybar rofi dunst picom feh i3lock xss-lock xautolock brightnessctl pavucontrol pulseaudio-utils maim xclip xdotool mpv redshift git curl wget tar xz-utils unzip fontconfig fonts-font-awesome libnotify-bin libglib2.0-bin iproute2 lxpolkit network-manager-gnome xfce4-power-manager thunar kitty sassc gtk2-engines-murrine gnome-themes-extra papirus-icon-theme x11-xserver-utils"
 # mpvpaper/xwinwrap are NOT in Debian repos: install manually if you want live wallpapers
 #   mpvpaper: https://github.com/GhostNaN/mpvpaper (Wayland)
 #   xwinwrap: https://github.com/ujjwal96/xwinwrap (X11) + mpv
@@ -97,12 +97,13 @@ instalar_archivo() {
     # 1. Si no existe la carpeta, crearla
     if [ ! -d "$destino_dir" ]; then
         echo "[INFO] Creando carpeta: $destino_dir"
-        mkdir -p "$destino_dir"
+        mkdir -p "$destino_dir" || { echo "[WARN] No se pudo crear $destino_dir"; return 0; }
     fi
 
     # 2 y 3. Si existe vacia o llena, copiar/sobreescribir con -f
+    # (nunca aborta el instalador: set -e esta activo)
     echo "[INFO] Instalando $origen -> $destino_archivo"
-    cp -f "$origen" "$destino_archivo"
+    cp -f "$origen" "$destino_archivo" || { echo "[WARN] No se pudo copiar $origen"; return 0; }
 }
 
 echo "Repo: $REPO_DIR"
@@ -139,6 +140,15 @@ if [ -f "$CONFIG_DIR/polybar/config.ini" ]; then
     if [ -n "$DET_BAT" ]; then
         sed -i "s/^battery[[:space:]]*=.*/battery = $DET_BAT/" "$CONFIG_DIR/polybar/config.ini" || true
         echo "[INFO] Polybar battery -> $DET_BAT"
+        # Autodetect AC adapter (AC/ADP1/...) para que el modulo battery no falle
+        DET_AD=""
+        for a in /sys/class/power_supply/A[C,D]*; do
+            [ -e "$a" ] && DET_AD="$(basename "$a")" && break
+        done
+        if [ -n "$DET_AD" ]; then
+            sed -i "s/^adapter[[:space:]]*=.*/adapter = $DET_AD/" "$CONFIG_DIR/polybar/config.ini" || true
+            echo "[INFO] Polybar adapter -> $DET_AD"
+        fi
     else
         # Sin bateria (sobremesa): quitar el modulo para que polybar no muestre error
         sed -i -e "s/ battery / /g" -e "s/ battery\$/ /" "$CONFIG_DIR/polybar/config.ini" || true
@@ -168,16 +178,21 @@ instalar_deps() {
         echo "[WARN] No hay apt, instala manual en tu distro."
         return 0
     fi
-    # NOTA: no usar 'set -e' aqui dentro: un fallo de apt no debe matar el instalador.
-    if ! sudo apt update; then
-        echo "[WARN] 'sudo apt update' fallo (red, sudo o lock). Sigue el instalador; instala deps a mano."
+    if ! command -v sudo >/dev/null 2>&1; then
+        echo "[WARN] No hay sudo, instala manual con apt como root."
         return 0
     fi
-    if ! sudo apt install -y $DEPS; then
+    # NOTA: no usar 'set -e' aqui dentro: un fallo de apt no debe matar el instalador.
+    # run_net evita cuelgues eternos (timeout 300s) si el mirror/red se queda colgado.
+    if ! run_net sudo apt update; then
+        echo "[WARN] 'sudo apt update' fallo o expiro (red, sudo o lock). Sigue el instalador; instala deps a mano."
+        return 0
+    fi
+    if ! run_net sudo apt install -y $DEPS; then
         echo "[WARN] Instalacion en bloque fallo (algun paquete no existe en tu distro). Reintento uno por uno..."
         local pk
         for pk in $DEPS; do
-            sudo apt install -y "$pk" || echo "[WARN] Sin instalar: $pk (sigue con el resto)"
+            run_net sudo apt install -y "$pk" || echo "[WARN] Sin instalar: $pk (sigue con el resto)"
         done
         echo "[WARN] Revisa los paquetes [FALTA] al final e instala a mano lo que falte."
     else
@@ -315,11 +330,11 @@ instalar_gtk_theme() {
     rm -rf "$tmp"
     # Reponer nuestros settings por si el upstream toco ~/.config/gtk-4.0
     for g in gtk-3.0 gtk-4.0; do
-        [ -f "$REPO_DIR/$g/settings.ini" ] && cp -f "$REPO_DIR/$g/settings.ini" "$CONFIG_DIR/$g/settings.ini"
+        [ -f "$REPO_DIR/$g/settings.ini" ] && cp -f "$REPO_DIR/$g/settings.ini" "$CONFIG_DIR/$g/settings.ini" || true
     done
     # Activar Gruvbox-Dark solo si quedo instalado (si no, se conserva Adwaita-dark)
     local found=""
-    found="$(ls -d "$HOME"/.themes/Gruvbox-Dark* /usr/share/themes/Gruvbox-Dark* 2>/dev/null | head -n1)"
+    found="$(ls -d "$HOME"/.themes/Gruvbox-Dark* /usr/share/themes/Gruvbox-Dark* 2>/dev/null || true | head -n1)"
     if [ -n "$found" ]; then
         local gname
         gname="$(basename "$found")"
@@ -482,7 +497,12 @@ instalar_wallpapers() {
 
     mkdir -p "$WALLPAPERS_DEST"
     # Sobreescribe si ya existia (coleccion completa)
-    cp -rf "$tmp_dir/wallapapers4rice/wallpapers/." "$WALLPAPERS_DEST/"
+    if [ -d "$tmp_dir/wallapapers4rice/wallpapers" ]; then
+        cp -rf "$tmp_dir/wallapapers4rice/wallpapers/." "$WALLPAPERS_DEST/" || echo "[WARN] Copia de wallpapers fallo parcial."
+    else
+        echo "[WARN] Estructura inesperada del repo de wallpapers (sin carpeta wallpapers/). Copio lo que haya."
+        cp -rf "$tmp_dir/wallapapers4rice/." "$WALLPAPERS_DEST/" || echo "[WARN] Copia de wallpapers fallo parcial."
+    fi
 
     # Deja un default funcional para i3 (no rompe el autostart)
     if [ -f "$WALLPAPERS_DEST/debian/debian_1.jpg" ]; then
@@ -527,12 +547,15 @@ FALTA=0
 paquete_para() {
     case "$1" in
         pactl) echo "pulseaudio-utils" ;;
+        pavucontrol) echo "pavucontrol" ;;
         notify-send) echo "libnotify-bin" ;;
-        xrdb) echo "x11-xserver-utils" ;;
+        xrdb|xsetroot|xset) echo "x11-xserver-utils" ;;
+        fc-cache|fc-list) echo "fontconfig" ;;
+        xdotool) echo "xdotool" ;;
         *) echo "$1" ;;
     esac
 }
-for bin in i3 polybar rofi dunst picom feh i3lock xss-lock xautolock brightnessctl pactl maim xclip xrdb redshift git curl kitty notify-send thunar; do
+for bin in i3 polybar rofi dunst picom feh i3lock xss-lock xautolock brightnessctl pactl pavucontrol maim xclip xdotool xrdb xsetroot redshift git curl kitty notify-send thunar mpv nm-applet lxpolkit xfce4-power-manager; do
     if command -v "$bin" >/dev/null 2>&1; then
         echo "[OK] $bin"
     else
@@ -575,7 +598,7 @@ if command -v i3 >/dev/null 2>&1 && [ -f "$CONFIG_DIR/i3/config" ]; then
 else
     echo "[SKIP] i3 -C (i3 no instalado o sin config aun)"
 fi
-if [ -n "$(ls -d "$HOME"/.themes/Gruvbox-Dark* /usr/share/themes/Gruvbox-Dark* 2>/dev/null)" ]; then
+if [ -n "$(ls -d "$HOME"/.themes/Gruvbox-Dark* /usr/share/themes/Gruvbox-Dark* 2>/dev/null || true)" ]; then
     echo "[OK] GTK Gruvbox-Dark"
 else
     echo "[INFO] GTK Gruvbox-Dark no instalado (se usa Adwaita-dark)"

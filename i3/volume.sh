@@ -11,6 +11,12 @@ notify() {
     fi
 }
 
+if ! command -v pactl >/dev/null 2>&1; then
+    notify "pactl no instalado (sudo apt install pulseaudio-utils)" 0
+    echo "volume: instala pactl (sudo apt install pulseaudio-utils)" >&2
+    exit 1
+fi
+
 case "$1" in
     up) pactl set-sink-volume @DEFAULT_SINK@ +5% ;;
     down) pactl set-sink-volume @DEFAULT_SINK@ -5% ;;

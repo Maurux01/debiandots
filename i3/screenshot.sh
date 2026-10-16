@@ -26,6 +26,11 @@ case "$MODO" in
     *) maim -s "$FILE" ;; # select por defecto
 esac
 
+if [ ! -f "$FILE" ]; then
+    echo "screenshot: maim fallo o captura cancelada" >&2
+    exit 1
+fi
+
 command -v xclip >/dev/null 2>&1 && xclip -selection clipboard -t image/png -i "$FILE"
 command -v notify-send >/dev/null 2>&1 && notify-send "Screenshot" "Guardado en $FILE"
 echo "$FILE"

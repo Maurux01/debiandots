@@ -35,6 +35,8 @@ Wallpapers: https://github.com/Maurux01/wallapapers4rice
 | Mod+q | close |
 | Mod+h/j/k/l | focus |
 | Mod+Shift+h/j/k/l | move |
+| Mod+1..0 | switch workspace |
+| Mod+Shift+1..0 | move to workspace |
 | Mod+w / Mod+s | tabbed / stacking |
 | Mod+f / Mod+v | fullscreen / split vertical |
 | Mod+Shift+space / Mod+Shift+e | floating toggle / split toggle |
@@ -48,6 +50,6 @@ Wallpapers: https://github.com/Maurux01/wallapapers4rice
 | Mod+Shift+w | static wallpaper |
 | Mod+Ctrl+Shift+w | live wallpaper |
 | Mod+Shift+n | redshift toggle |
-| Mod+Shift+r / c | reload / restart |
+| Mod+Shift+c / r | reload / restart |
 
 Mod = Super key.
