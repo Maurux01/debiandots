@@ -8,7 +8,7 @@ Minimal i3 rice for Debian with Gruvbox Dark theme.
 - Lock screen, powermenu, screenshots, static/live wallpapers
 - Volume/brightness OSD, redshift night light
 - JetBrainsMono Nerd Font, Papirus-Mace icons, cursorfont cursor
-- GTK dark settings
+- GTK Gruvbox-Dark theme (Adwaita-dark como fallback)
 
 ## Install
 
@@ -19,7 +19,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Flags: `--with-wallpapers`, `--without-wallpapers`, `--without-fonts`, `--without-deps`, `--without-icons`, `--without-cursor`, `--without-backup`, `--with-grub`, `--without-grub`, `--help`.
+Flags: `--with-wallpapers`, `--without-wallpapers`, `--without-fonts`, `--without-deps`, `--without-icons`, `--without-cursor`, `--without-gtk-theme`, `--without-backup`, `--with-grub`, `--without-grub`, `--help`.
 
 Backs up existing configs to `~/.config-bak-<date>`. Live wallpapers need `mpv` (auto) + `mpvpaper`/`xwinwrap` (manual).
 

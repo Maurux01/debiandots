@@ -41,12 +41,14 @@ if command -v i3lock-color >/dev/null 2>&1; then
     LOCK_BIN="i3lock-color"
 elif command -v i3lock >/dev/null 2>&1; then
     # i3lock clasico de Debian: sin anillo, fondo solido gruvbox + imagen si existe
+    # (sin exec: al desbloquear se reanudan las notificaciones; con exec el trap EXIT jamas corre)
     pausar_dunst
     if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
-        exec i3lock -n -c "$BG" -i "$WALLPAPER" -t
+        i3lock -n -c "$BG" -i "$WALLPAPER" -t
     else
-        exec i3lock -n -c "$BG"
+        i3lock -n -c "$BG"
     fi
+    reanudar_dunst
 else
     msg_falta
 fi
@@ -58,7 +60,8 @@ if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
 fi
 
 pausar_dunst
-exec "$LOCK_BIN" -n "${IMG_ARGS[@]}" \
+# (sin exec: al desbloquear se reanudan las notificaciones; con exec el trap EXIT jamas corre)
+"$LOCK_BIN" -n "${IMG_ARGS[@]}" \
     --inside-color="$BG" \
     --ring-color="$ACCENT" \
     --line-uses-inside \
@@ -91,3 +94,4 @@ exec "$LOCK_BIN" -n "${IMG_ARGS[@]}" \
     --date-str="%Y-%m-%d" \
     --greeter-text="gruvbox" \
     --indicator
+reanudar_dunst

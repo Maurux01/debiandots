@@ -18,7 +18,7 @@ case "$1" in
     *) echo "Uso: volume.sh [up|down|mute]" >&2; exit 1 ;;
 esac
 
-VOL="$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | grep -oP '\d+%' | head -n1 | tr -d '%')"
+VOL="$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | grep -o '[0-9][0-9]*%' | head -n1 | tr -d '%')"
 MUTED="$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -qi yes && echo 1 || echo 0)"
 [ -z "$VOL" ] && VOL=0
 

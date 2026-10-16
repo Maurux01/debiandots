@@ -5,7 +5,10 @@
 set $mod Mod4
 set $term kitty
 set $filemanager thunar
-set $launcher rofi -show drun -theme-str 'window {width: 50%;} listview {columns: 1;}'
+set $launcher rofi -show drun -theme-str "window {width: 50%;} listview {columns: 1;}"
+
+# Title-bar / i3bar font (needs JetBrainsMono Nerd Font, installed by install.sh)
+font pango:JetBrainsMono Nerd Font 10
 
 # --- AUTOSTART (guarded: no error if a package is missing) ---
 exec --no-startup-id sh -c "command -v xrdb >/dev/null && xrdb -merge ~/.Xresources"
@@ -16,8 +19,9 @@ exec --no-startup-id sh -c "command -v xfce4-power-manager >/dev/null && xfce4-p
 exec --no-startup-id sh -c "command -v dunst >/dev/null && dunst"
 exec --no-startup-id sh -c "command -v picom >/dev/null && picom -b"
 exec --no-startup-id sh -c "command -v redshift >/dev/null && redshift -c ~/.config/redshift/redshift.conf &"
-exec --no-startup-id sh -c "command -v xautolock >/dev/null && xautolock -time 10 -locker ~/.config/i3/lock.sh &"
-exec_always --no-startup-id ~/.config/polybar/launch.sh &
+# Autolock 10min: xautolock si existe (Debian <=12); si no, xss-lock + blanking X (Debian 13+, sin xautolock en repos)
+exec --no-startup-id sh -c "if command -v xautolock >/dev/null 2>&1; then xautolock -time 10 -locker ~/.config/i3/lock.sh & elif command -v xss-lock >/dev/null 2>&1; then xset s 600; fi"
+exec_always --no-startup-id ~/.config/polybar/launch.sh
 
 # Default static wallpaper (change the path to your image)
 exec --no-startup-id ~/.config/i3/static-wp.sh ~/.config/i3/wallpaper.jpg
@@ -31,7 +35,7 @@ hide_edge_borders both
 gaps inner 10
 gaps outer 5
 smart_gaps on
-smart_borders on
+# (sin smart_borders: i3 lo ignora por deprecated si se combina con hide_edge_borders)
 
 # Colors (Gruvbox Dark Palette)
 # bg: #282828, bg-alt: #3c3836, fg: #ebdbb2, accent: #fabd2f, urgent: #fb4934, muted: #a89984
@@ -99,7 +103,7 @@ bindsym $mod+Ctrl+Shift+w exec ~/.config/i3/live-wp.sh ~/.config/i3/live-wallpap
 # Lock ($mod+l esta ocupado por focus right, se usa Ctrl+l)
 bindsym $mod+Ctrl+l exec ~/.config/i3/lock.sh
 bindsym XF86ScreenSaver exec ~/.config/i3/lock.sh
-exec --no-startup-id sh -c "command -v xss-lock >/dev/null && xss-lock --transfer-sleep-lock -- ~/.config/i3/lock.sh" &
+exec --no-startup-id sh -c "command -v xss-lock >/dev/null && xss-lock --transfer-sleep-lock -- ~/.config/i3/lock.sh"
 # Powermenu rofi gruvbox (reemplaza i3-nagbar feo)
 bindsym $mod+Shift+x exec ~/.config/i3/powermenu.sh
 # Screenshots (maim + xclip)

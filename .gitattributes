@@ -1,0 +1,3 @@
+# Dotfiles para Linux: siempre LF, sin importar el OS donde se edite
+* text=auto eol=lf
+*.sh text eol=lf

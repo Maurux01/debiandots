@@ -16,7 +16,13 @@ fi
 
 case "$MODO" in
     full) maim "$FILE" ;;
-    window) maim -i "$(xdotool getactivewindow)" "$FILE" ;;
+    window)
+        # Si xdotool falla/no existe, caer a seleccion en vez de error
+        if command -v xdotool >/dev/null 2>&1 && wid="$(xdotool getactivewindow 2>/dev/null)" && [ -n "$wid" ]; then
+            maim -i "$wid" "$FILE"
+        else
+            maim -s "$FILE"
+        fi ;;
     *) maim -s "$FILE" ;; # select por defecto
 esac
 

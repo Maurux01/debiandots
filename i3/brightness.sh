@@ -16,6 +16,12 @@ if ! command -v brightnessctl >/dev/null 2>&1; then
     exit 1
 fi
 
+# Sin dispositivo backlight (sobremesa): no hay nada que ajustar
+if [ -z "$(ls /sys/class/backlight 2>/dev/null)" ]; then
+    notify "sin control de brillo" 0
+    exit 1
+fi
+
 case "$1" in
     up) brightnessctl set +5% >/dev/null ;;
     down) brightnessctl set 5%- >/dev/null ;;
