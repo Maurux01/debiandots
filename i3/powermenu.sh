@@ -1,5 +1,5 @@
 #!/bin/bash
-# powermenu.sh - menu apagar/reiniciar/suspender/bloquear/salir con rofi gruvbox
+# powermenu.sh - menu apagar/reiniciar/suspender/bloquear/salir con rofi Catppuccin
 # Uso: powermenu.sh
 
 if ! command -v rofi >/dev/null 2>&1; then

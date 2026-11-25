@@ -1,16 +1,40 @@
 # debiandots
 
-Minimal i3 rice for Debian with Gruvbox Dark theme.
+Minimal i3 rice for Debian with **Catppuccin Mocha** (el mas oscuro), GTK mauve e iconos Catppuccin.
 
 ## Includes
 
 - i3 (gaps, vim keys), polybar, picom (blur), rofi, dunst
 - Lock screen, powermenu, screenshots, static/live wallpapers
 - Volume/brightness OSD, redshift night light
-- JetBrainsMono Nerd Font, Papirus-Mace icons, cursorfont cursor
-- GTK Gruvbox-Dark theme (Adwaita-dark como fallback)
+- JetBrainsMono Nerd Font (consola) + Nerd Fonts Symbols (glyfos), kitty config
+- Iconos de app y carpetas `Catppuccin-SE`, cursorfont cursor
+- GTK `Catppuccin-Mauve-Dark` (tema actual como fallback)
 
 ## Install
+
+One-liner (descarga el repo a un temporal y ejecuta el instalador, sin clonar):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Maurux01/debiandots/main/install.sh | bash
+```
+
+Para pasar flags usa `bash -s --`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Maurux01/debiandots/main/install.sh | bash -s -- --with-wallpapers --without-grub
+curl -fsSL https://raw.githubusercontent.com/Maurux01/debiandots/main/install.sh | bash -s -- --help
+```
+
+Más seguro (revisa el script antes de ejecutarlo; también funciona suelto fuera del repo):
+
+```bash
+curl -fsSLo install.sh https://raw.githubusercontent.com/Maurux01/debiandots/main/install.sh
+less install.sh
+bash install.sh
+```
+
+Clásico (clonando):
 
 ```bash
 git clone https://github.com/Maurux01/debiandots.git
@@ -29,7 +53,7 @@ Wallpapers: https://github.com/Maurux01/wallapapers4rice
 
 | Keys | Action |
 | ---- | ------ |
-| Mod+Return | terminal |
+| Mod+Return | terminal (kitty + JetBrainsMono Nerd Font) |
 | Mod+d | rofi |
 | Mod+e | file manager |
 | Mod+q | close |

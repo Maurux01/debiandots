@@ -3,16 +3,31 @@
 # Copia los dotfiles del repo a ~/.config en Debian
 set -e
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Ruta del script: queda vacia cuando se ejecuta como `curl ... | bash`.
+SCRIPT_PATH="${BASH_SOURCE[0]:-}"
+
+# Metadata del repo (se puede sobreescribir con variables de entorno).
+REPO_SLUG="${DEBIANDOTS_REPO_SLUG:-Maurux01/debiandots}"
+REPO_BRANCH="${DEBIANDOTS_BRANCH:-main}"
+REPO_URL="${DEBIANDOTS_REPO:-https://github.com/${REPO_SLUG}.git}"
+REPO_RAW_BASE="https://raw.githubusercontent.com/${REPO_SLUG}/${REPO_BRANCH}"
+REPO_ARCHIVE="https://github.com/${REPO_SLUG}/archive/refs/heads/${REPO_BRANCH}.tar.gz"
+
+REPO_DIR="$(cd "$(dirname "${SCRIPT_PATH:-.}")" && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 WALLPAPERS_REPO="https://github.com/Maurux01/wallapapers4rice.git"
 WALLPAPERS_DEST="$HOME/Pictures/wallpapers4rice"
-ICONS_REPO="https://gitlab.com/macelinux/icons/papirus-mace-icon-theme.git"
+# Catppuccin Mocha: iconos de app + carpetas en el mismo pack.
+ICON_THEME_NAME="Catppuccin-SE"
+ICON_THEME_URL="https://github.com/ljmill/catppuccin-icons/releases/download/v0.2.0/Catppuccin-SE.tar.bz2"
 GRUB_THEME_REPO="https://github.com/Shammanik/Asuka_grub_theme.git"
 GRUB_THEME_NAME="Asuka"
 CURSOR_NAME="cursorfont"
 CURSOR_REPO="https://github.com/ccxvii/cursorfont.git"
-GTK_THEME_REPO="https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme.git"
+# Tema GTK Catppuccin Mocha con acento mauve (el mas oscuro de la familia).
+GTK_THEME_REPO="https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git"
+GTK_THEME_NAME="Catppuccin-Mauve-Dark"
+NERDFONTS_BASE="https://github.com/ryanoasis/nerd-fonts/releases/latest/download"
 WITH_WALLPAPERS=""
 NO_WALLPAPERS=""
 
@@ -26,7 +41,56 @@ run_net() {
     fi
 }
 
-DEPS="i3 polybar rofi dunst picom feh i3lock xss-lock xautolock brightnessctl pavucontrol pulseaudio-utils maim xclip xdotool mpv redshift git curl wget tar xz-utils unzip fontconfig fonts-font-awesome libnotify-bin libglib2.0-bin iproute2 lxpolkit network-manager-gnome xfce4-power-manager thunar kitty sassc gtk2-engines-murrine gnome-themes-extra papirus-icon-theme x11-xserver-utils"
+# Comprueba que el script este junto a los dotfiles (checkout local normal).
+tiene_checkout_local() {
+    [ -n "$SCRIPT_PATH" ] &&
+        [ -f "$SCRIPT_PATH" ] &&
+        [ -f "$(dirname "$SCRIPT_PATH")/i3/config" ] &&
+        [ -f "$(dirname "$SCRIPT_PATH")/polybar/config.ini" ]
+}
+
+# Modo `curl ... | bash`: no hay checkout local, bajamos el tarball del repo
+# a un temporal y relanzamos el instalador real desde ahi.
+bootstrap_remoto() {
+    echo "[INFO] Sin checkout local (modo curl). Descargando $REPO_SLUG@$REPO_BRANCH ..."
+
+    local tmp script
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+
+    if command -v curl >/dev/null 2>&1; then
+        if ! run_net curl -fsSL --connect-timeout 30 "$REPO_ARCHIVE" -o "$tmp/repo.tar.gz"; then
+            echo "[ERROR] No se pudo descargar: $REPO_ARCHIVE" >&2
+            exit 1
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if ! run_net wget --timeout=30 -O "$tmp/repo.tar.gz" "$REPO_ARCHIVE"; then
+            echo "[ERROR] No se pudo descargar: $REPO_ARCHIVE" >&2
+            exit 1
+        fi
+    else
+        echo "[ERROR] Necesitas curl o wget para el modo curl." >&2
+        exit 1
+    fi
+
+    if ! tar -xzf "$tmp/repo.tar.gz" -C "$tmp"; then
+        echo "[ERROR] No se pudo descomprimir el repo descargado." >&2
+        exit 1
+    fi
+
+    script="$(find "$tmp" -mindepth 2 -maxdepth 2 -type f -name install.sh | head -n1)"
+    if [ -z "$script" ] || [ ! -f "$(dirname "$script")/i3/config" ]; then
+        echo "[ERROR] El repo descargado no contiene install.sh + i3/config." >&2
+        exit 1
+    fi
+
+    echo "[INFO] Repo temporal listo: $(dirname "$script")"
+    bash "$script" "$@"
+    # El padre solo sirve de arranque: termina aqui para no repetir la instalacion.
+    exit $?
+}
+
+DEPS="i3 polybar rofi dunst picom feh i3lock xss-lock xautolock brightnessctl pavucontrol pulseaudio-utils maim xclip xdotool mpv redshift git curl wget tar xz-utils bzip2 unzip fontconfig fonts-font-awesome libnotify-bin libglib2.0-bin iproute2 lxpolkit network-manager-gnome xfce4-power-manager thunar kitty sassc gtk2-engines-murrine gnome-themes-extra x11-xserver-utils"
 # mpvpaper/xwinwrap are NOT in Debian repos: install manually if you want live wallpapers
 #   mpvpaper: https://github.com/GhostNaN/mpvpaper (Wayland)
 #   xwinwrap: https://github.com/ujjwal96/xwinwrap (X11) + mpv
@@ -38,14 +102,18 @@ usage() {
     echo "  -h, --help              show this help"
     echo "  -y, --yes, --with-wallpapers     install wallpapers (asks by default)"
     echo "  --without-wallpapers    skip wallpapers"
-    echo "  --without-fonts         skip JetBrainsMono Nerd Font"
+    echo "  --without-fonts         skip JetBrainsMono + Nerd Fonts"
     echo "  --without-deps          skip apt deps"
-    echo "  --without-icons         skip Papirus-Mace icons"
+    echo "  --without-icons         skip Catppuccin-SE icons/folders"
     echo "  --without-cursor        skip cursorfont cursor"
-    echo "  --without-gtk-theme     skip Gruvbox GTK theme"
+    echo "  --without-gtk-theme     skip Catppuccin Mocha GTK theme"
     echo "  --without-backup        skip backup of ~/.config"
     echo "  --with-grub             install Asuka grub theme (asks by default)"
     echo "  --without-grub          skip grub theme"
+    echo ""
+    echo "Modo curl (sin clonar):"
+    echo "  curl -fsSL $REPO_RAW_BASE/install.sh | bash"
+    echo "  curl -fsSL $REPO_RAW_BASE/install.sh | bash -s -- --with-wallpapers --without-grub"
 }
 
 for arg in "$@"; do
@@ -65,11 +133,17 @@ for arg in "$@"; do
     esac
 done
 
+# Si el script vino de stdin (curl | bash) o esta suelto sin los dotfiles,
+# descargamos el repo y re-lanzamos el instalador con los mismos argumentos.
+if ! tiene_checkout_local; then
+    bootstrap_remoto "$@"
+fi
+
 # Backup existing configs before overwrite
 if [ -z "$NO_BACKUP" ]; then
     BACKUP_DIR="$HOME/.config-bak-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$BACKUP_DIR"
-    for d in i3 polybar picom rofi dunst gtk-3.0 gtk-4.0 redshift; do
+    for d in i3 polybar picom rofi dunst gtk-3.0 gtk-4.0 redshift kitty; do
         [ -d "$CONFIG_DIR/$d" ] && cp -rf "$CONFIG_DIR/$d" "$BACKUP_DIR/" 2>/dev/null || true
     done
     [ -f "$HOME/.Xresources" ] && cp -f "$HOME/.Xresources" "$BACKUP_DIR/" 2>/dev/null || true
@@ -161,6 +235,7 @@ instalar_archivo "$REPO_DIR/dunst/dunstrc" "$CONFIG_DIR/dunst"
 instalar_archivo "$REPO_DIR/redshift/redshift.conf" "$CONFIG_DIR/redshift"
 instalar_archivo "$REPO_DIR/gtk-3.0/settings.ini" "$CONFIG_DIR/gtk-3.0"
 instalar_archivo "$REPO_DIR/gtk-4.0/settings.ini" "$CONFIG_DIR/gtk-4.0"
+instalar_archivo "$REPO_DIR/kitty/kitty.conf" "$CONFIG_DIR/kitty"
 if [ -f "$REPO_DIR/gtk-2.0/gtkrc" ]; then
     echo "[INFO] Instalando gtkrc -> $HOME/.gtkrc-2.0"
     cp -f "$REPO_DIR/gtk-2.0/gtkrc" "$HOME/.gtkrc-2.0" || echo "[WARN] No se pudo escribir $HOME/.gtkrc-2.0"
@@ -224,30 +299,50 @@ fi
 
 instalar_iconos() {
     echo ""
-    echo "[INFO] Iconos Papirus-Mace: $ICONS_REPO"
-    if [ -d "$HOME/.local/share/icons/Papirus-Mace" ] || [ -d "$HOME/.icons/Papirus-Mace" ] || [ -d "/usr/share/icons/Papirus-Mace" ]; then
-        echo "[OK] Papirus-Mace detectado, igual reinstalo para actualizar."
-    fi
-    if ! command -v git >/dev/null 2>&1; then
-        echo "[ERROR] Necesitas git para iconos."
+    echo "[INFO] Iconos + carpetas Catppuccin Mocha: $ICON_THEME_NAME"
+    echo "[INFO] Descargando $ICON_THEME_URL ..."
+
+    local dest="$HOME/.local/share/icons"
+    local tmp_file tmp_err
+    tmp_file="$(mktemp)"
+    tmp_err="$(mktemp)"
+    mkdir -p "$dest"
+
+    if command -v curl >/dev/null 2>&1; then
+        if ! run_net curl -fL --connect-timeout 30 -o "$tmp_file" "$ICON_THEME_URL"; then
+            echo "[WARN] No se pudieron descargar los iconos (red). Sigue el instalador."
+            rm -f "$tmp_file" "$tmp_err"
+            return 1
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if ! run_net wget --timeout=30 -O "$tmp_file" "$ICON_THEME_URL"; then
+            echo "[WARN] No se pudieron descargar los iconos (red). Sigue el instalador."
+            rm -f "$tmp_file" "$tmp_err"
+            return 1
+        fi
+    else
+        echo "[ERROR] Necesitas curl o wget para los iconos."
+        rm -f "$tmp_file" "$tmp_err"
         return 1
     fi
-    local tmp
-    tmp="$(mktemp -d)"
-    if ! run_net git clone --depth 1 "$ICONS_REPO" "$tmp/papirus-mace"; then
-        echo "[WARN] No se pudo clonar iconos (red o repo). Sigue el instalador."
-        rm -rf "$tmp"
+
+    [ -d "$dest/$ICON_THEME_NAME" ] && rm -rf "$dest/$ICON_THEME_NAME"
+    # Algunos tarrafos tienen symlinks colgantes: en Linux se crean bien, pero
+    # en entornos tipo MSYS fallan. Si index.theme queda, el pack es utilizable.
+    tar -xjf "$tmp_file" -C "$dest" 2>"$tmp_err" || true
+    rm -f "$tmp_file"
+
+    if [ ! -f "$dest/$ICON_THEME_NAME/index.theme" ]; then
+        echo "[WARN] El pack descargado no contiene $ICON_THEME_NAME/index.theme."
+        head -n 5 "$tmp_err" >&2 2>/dev/null || true
+        rm -f "$tmp_err"
         return 1
     fi
-    chmod +x "$tmp/papirus-mace/install.sh"
-    # El upstream instala en $HOME por defecto o /usr/share si root
-    if ! (cd "$tmp/papirus-mace" && ./install.sh); then
-        echo "[WARN] Instalador upstream de iconos fallo. Sigue el instalador."
-        rm -rf "$tmp"
-        return 1
+    if [ -s "$tmp_err" ] && grep -qi 'symlink' "$tmp_err"; then
+        echo "[WARN] Algunos alias simbolicos no se crearon; iconos y carpetas principales OK."
     fi
-    rm -rf "$tmp"
-    echo "[OK] Papirus-Mace instalado. Activo en gtk settings."
+    rm -f "$tmp_err"
+    echo "[OK] $ICON_THEME_NAME instalado (iconos de app y carpetas en Catppuccin Mocha)."
 }
 
 if [ -z "$NO_ICONS" ]; then
@@ -296,34 +391,35 @@ else
 fi
 
 echo ""
-echo "[INFO] Tema GTK Gruvbox: $GTK_THEME_REPO"
+echo "[INFO] Tema GTK Catppuccin Mocha / mauve: $GTK_THEME_REPO"
 instalar_gtk_theme() {
     if ! command -v git >/dev/null 2>&1; then
         echo "[ERROR] Necesitas git para el tema GTK."
         return 1
     fi
     if ! command -v sassc >/dev/null 2>&1; then
-        echo "[WARN] Falta sassc para compilar el tema (sudo apt install sassc). Se conserva Adwaita-dark."
+        echo "[WARN] Falta sassc para compilar el tema (sudo apt install sassc). Se conserva el tema actual."
         return 1
     fi
     local tmp
     tmp="$(mktemp -d)"
-    echo "[INFO] Clonando tema GTK Gruvbox..."
-    if ! run_net git clone --depth 1 "$GTK_THEME_REPO" "$tmp/gruvbox-gtk"; then
-        echo "[WARN] No se pudo clonar tema GTK (red o repo). Se conserva Adwaita-dark."
+    echo "[INFO] Clonando tema GTK Catppuccin..."
+    if ! run_net git clone --depth 1 "$GTK_THEME_REPO" "$tmp/catppuccin-gtk"; then
+        echo "[WARN] No se pudo clonar tema GTK (red o repo). Se conserva el tema actual."
         rm -rf "$tmp"
         return 1
     fi
-    local inst="$tmp/gruvbox-gtk/install.sh"
-    [ -x "$inst" ] || inst="$tmp/gruvbox-gtk/themes/install.sh"
+    local inst="$tmp/catppuccin-gtk/themes/install.sh"
+    [ -x "$inst" ] || inst="$tmp/catppuccin-gtk/install.sh"
     if [ ! -x "$inst" ]; then
-        echo "[WARN] Instalador upstream del tema GTK no encontrado. Se conserva Adwaita-dark."
+        echo "[WARN] Instalador upstream del tema GTK no encontrado. Se conserva el tema actual."
         rm -rf "$tmp"
         return 1
     fi
-    echo "[INFO] Instalando variante dark en ~/.themes ..."
-    if ! (cd "$(dirname "$inst")" && ./install.sh -c dark -l); then
-        echo "[WARN] Instalador del tema GTK fallo. Se conserva Adwaita-dark."
+    echo "[INFO] Instalando Mocha dark + acento mauve en ~/.themes ..."
+    # BATCH_MODE evita el menu interactivo del upstream; los enlaces GTK4 los hacemos nosotros.
+    if ! (cd "$(dirname "$inst")" && BATCH_MODE=true ./install.sh -a mauve -m dark); then
+        echo "[WARN] Instalador del tema GTK fallo. Se conserva el tema actual."
         rm -rf "$tmp"
         return 1
     fi
@@ -332,9 +428,12 @@ instalar_gtk_theme() {
     for g in gtk-3.0 gtk-4.0; do
         [ -f "$REPO_DIR/$g/settings.ini" ] && cp -f "$REPO_DIR/$g/settings.ini" "$CONFIG_DIR/$g/settings.ini" || true
     done
-    # Activar Gruvbox-Dark solo si quedo instalado (si no, se conserva Adwaita-dark)
+    # Activar el tema Catppuccin oscuro (si no, se conserva el tema actual)
     local found=""
-    found="$(ls -d "$HOME"/.themes/Gruvbox-Dark* /usr/share/themes/Gruvbox-Dark* 2>/dev/null || true | head -n1)"
+    for candidate in "$HOME/.themes/$GTK_THEME_NAME" "/usr/share/themes/$GTK_THEME_NAME"; do
+        [ -d "$candidate" ] && found="$candidate" && break
+    done
+    [ -z "$found" ] && found="$(ls -d "$HOME"/.themes/Catppuccin*Dark* /usr/share/themes/Catppuccin*Dark* 2>/dev/null || true | head -n1)"
     if [ -n "$found" ]; then
         local gname
         gname="$(basename "$found")"
@@ -347,15 +446,22 @@ instalar_gtk_theme() {
                 printf 'gtk-theme-name="%s"\n' "$gname" >> "$HOME/.gtkrc-2.0"
             fi
         fi
+        # GTK4/Libadwaita: enlazar assets/css del tema sin depender del menu del upstream.
+        if [ -d "$found/gtk-4.0" ]; then
+            mkdir -p "$CONFIG_DIR/gtk-4.0"
+            [ -d "$found/gtk-4.0/assets" ] && ln -sfn "$found/gtk-4.0/assets" "$CONFIG_DIR/gtk-4.0/assets" 2>/dev/null || true
+            [ -f "$found/gtk-4.0/gtk.css" ] && ln -sfn "$found/gtk-4.0/gtk.css" "$CONFIG_DIR/gtk-4.0/gtk.css" 2>/dev/null || true
+            [ -f "$found/gtk-4.0/gtk-dark.css" ] && ln -sfn "$found/gtk-4.0/gtk-dark.css" "$CONFIG_DIR/gtk-4.0/gtk-dark.css" 2>/dev/null || true
+        fi
         command -v gsettings >/dev/null 2>&1 && gsettings set org.gnome.desktop.interface gtk-theme "$gname" 2>/dev/null || true
         echo "[OK] Tema GTK $gname instalado y activado."
     else
-        echo "[WARN] Tema GTK no encontrado tras instalar. Se conserva Adwaita-dark."
+        echo "[WARN] Tema GTK no encontrado tras instalar. Se conserva el tema actual."
         return 1
     fi
 }
 if [ -z "$NO_GTK" ]; then
-    instalar_gtk_theme || echo "[WARN] Tema GTK fallo, sigue el instalador (Adwaita-dark)."
+    instalar_gtk_theme || echo "[WARN] Tema GTK fallo, sigue el instalador (tema actual)."
 else
     echo "[SKIP] Tema GTK omitido (--without-gtk-theme)."
 fi
@@ -421,29 +527,22 @@ else
     echo "[SKIP] GRUB omitido (modo no interactivo, usa --with-grub)."
 fi
 
-instalar_jetbrains_nerd() {
-    echo ""
-    echo "[INFO] Fuente: JetBrainsMono Nerd Font"
-
-    if fc-list 2>/dev/null | grep -qi "JetBrainsMono Nerd Font"; then
-        echo "[OK] JetBrainsMono Nerd Font ya instalada, skip."
-        return 0
-    fi
-
-    local font_dir="$HOME/.local/share/fonts/JetBrainsMonoNerd"
-    mkdir -p "$font_dir"
-    local tmp_file="/tmp/JetBrainsMono.tar.xz"
-    local url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz"
+descargar_fuente() {
+    local nombre="$1" url="$2" dest="$3"
+    local tmp_file="/tmp/${nombre}.tar.xz"
+    mkdir -p "$dest"
 
     echo "[INFO] Descargando $url ..."
     if command -v curl >/dev/null 2>&1; then
         if ! run_net curl -fL --connect-timeout 30 -o "$tmp_file" "$url"; then
-            echo "[WARN] Descarga de fuente fallo (red). Sigue el instalador."
+            echo "[WARN] Descarga de $nombre fallo (red). Sigue el instalador."
+            rm -f "$tmp_file"
             return 1
         fi
     elif command -v wget >/dev/null 2>&1; then
         if ! run_net wget --timeout=30 -O "$tmp_file" "$url"; then
-            echo "[WARN] Descarga de fuente fallo (red). Sigue el instalador."
+            echo "[WARN] Descarga de $nombre fallo (red). Sigue el instalador."
+            rm -f "$tmp_file"
             return 1
         fi
     else
@@ -451,25 +550,63 @@ instalar_jetbrains_nerd() {
         return 1
     fi
 
-    echo "[INFO] Instalando en $font_dir ..."
-    if ! tar -xJkf "$tmp_file" -C "$font_dir"; then
-        echo "[WARN] Descompresion de fuente fallo. Sigue el instalador."
+    if ! tar -xJf "$tmp_file" -C "$dest"; then
+        echo "[WARN] Descompresion de $nombre fallo. Sigue el instalador."
         rm -f "$tmp_file"
         return 1
     fi
     rm -f "$tmp_file"
+}
+
+fuente_instalada() {
+    if command -v fc-list >/dev/null 2>&1 && fc-list 2>/dev/null | grep -qi "$1"; then
+        return 0
+    fi
+    # Fallback por archivos (util si fontconfig aun no esta instalado).
+    case "$1" in
+        *JetBrainsMono*)
+            [ -n "$(find "$HOME/.local/share/fonts/JetBrainsMonoNerd" -maxdepth 2 -type f -name '*NerdFont*.ttf' -print -quit 2>/dev/null)" ]
+            ;;
+        *Symbols*)
+            [ -f "$HOME/.local/share/fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf" ] ||
+                [ -f "$HOME/.local/share/fonts/NerdFontsSymbolsOnly/SymbolsNerdFontMono-Regular.ttf" ]
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+instalar_fuentes() {
+    echo ""
+    echo "[INFO] Fuentes: JetBrains Mono (consola) + Nerd Fonts (glyfos)"
+
+    local jb_dir="$HOME/.local/share/fonts/JetBrainsMonoNerd"
+    local symbols_dir="$HOME/.local/share/fonts/NerdFontsSymbolsOnly"
+
+    if fuente_instalada "JetBrainsMono Nerd Font"; then
+        echo "[OK] JetBrainsMono Nerd Font ya instalada, skip."
+    else
+        descargar_fuente "JetBrainsMono" "$NERDFONTS_BASE/JetBrainsMono.tar.xz" "$jb_dir" || return 1
+    fi
+
+    if fuente_instalada "Symbols Nerd Font"; then
+        echo "[OK] Nerd Fonts Symbols ya instalada, skip."
+    else
+        descargar_fuente "NerdFontsSymbolsOnly" "$NERDFONTS_BASE/NerdFontsSymbolsOnly.tar.xz" "$symbols_dir" || return 1
+    fi
 
     if command -v fc-cache >/dev/null 2>&1; then
-        fc-cache -f "$font_dir" >/dev/null
+        fc-cache -f "$jb_dir" "$symbols_dir" >/dev/null 2>&1 || fc-cache -f >/dev/null 2>&1 || true
     else
         echo "[WARN] Instala fontconfig para refrescar cache: sudo apt install fontconfig"
     fi
 
-    echo "[OK] JetBrainsMono Nerd Font instalada."
+    echo "[OK] JetBrains Mono + Nerd Fonts instaladas (kitty/i3/polybar/rofi listos)."
 }
 
 if [ -z "$NO_FONTS" ]; then
-    instalar_jetbrains_nerd || echo "[WARN] Fuentes fallaron, sigue el instalador."
+    instalar_fuentes || echo "[WARN] Fuentes fallaron, sigue el instalador."
 else
     echo ""
     echo "[SKIP] Fuentes omitidas (--without-fonts)."
@@ -581,7 +718,7 @@ if [ -f "$REPO_DIR/polybar/launch.sh" ]; then
         FALTA=1
     fi
 fi
-for f in "$CONFIG_DIR/i3/config" "$CONFIG_DIR/polybar/config.ini" "$CONFIG_DIR/picom/picom.conf" "$CONFIG_DIR/rofi/config.rasi" "$CONFIG_DIR/dunst/dunstrc" "$CONFIG_DIR/redshift/redshift.conf"; do
+for f in "$CONFIG_DIR/i3/config" "$CONFIG_DIR/polybar/config.ini" "$CONFIG_DIR/picom/picom.conf" "$CONFIG_DIR/rofi/config.rasi" "$CONFIG_DIR/dunst/dunstrc" "$CONFIG_DIR/redshift/redshift.conf" "$CONFIG_DIR/kitty/kitty.conf"; do
     if [ -f "$f" ]; then
         echo "[OK] instalado: $f"
     else
@@ -589,6 +726,11 @@ for f in "$CONFIG_DIR/i3/config" "$CONFIG_DIR/polybar/config.ini" "$CONFIG_DIR/p
         FALTA=1
     fi
 done
+if [ -f "$HOME/.local/share/icons/$ICON_THEME_NAME/index.theme" ]; then
+    echo "[OK] Iconos/carpetas $ICON_THEME_NAME"
+else
+    echo "[INFO] Iconos $ICON_THEME_NAME no instalados"
+fi
 if command -v i3 >/dev/null 2>&1 && [ -f "$CONFIG_DIR/i3/config" ]; then
     if i3 -C -c "$CONFIG_DIR/i3/config" 2>/dev/null; then
         echo "[OK] i3 config valida"
@@ -598,10 +740,15 @@ if command -v i3 >/dev/null 2>&1 && [ -f "$CONFIG_DIR/i3/config" ]; then
 else
     echo "[SKIP] i3 -C (i3 no instalado o sin config aun)"
 fi
-if [ -n "$(ls -d "$HOME"/.themes/Gruvbox-Dark* /usr/share/themes/Gruvbox-Dark* 2>/dev/null || true)" ]; then
-    echo "[OK] GTK Gruvbox-Dark"
+if [ -d "$HOME/.themes/$GTK_THEME_NAME" ] || [ -d "/usr/share/themes/$GTK_THEME_NAME" ]; then
+    echo "[OK] GTK $GTK_THEME_NAME (Catppuccin Mocha)"
 else
-    echo "[INFO] GTK Gruvbox-Dark no instalado (se usa Adwaita-dark)"
+    echo "[INFO] GTK $GTK_THEME_NAME no instalado (se usa el tema actual)"
+fi
+if fuente_instalada "JetBrainsMono Nerd Font"; then
+    echo "[OK] JetBrains Mono + Nerd Fonts"
+else
+    echo "[INFO] JetBrains Mono/Nerd Fonts no detectadas"
 fi
 if ! command -v xautolock >/dev/null 2>&1 && command -v xss-lock >/dev/null 2>&1; then
     echo "[INFO] xautolock ausente en tu distro -> i3 usa xss-lock + xset s 600 para bloqueo por inactividad"

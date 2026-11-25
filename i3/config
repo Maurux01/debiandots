@@ -1,5 +1,5 @@
 # ==========================================
-# I3WM CONFIGURATION (Theme: Gruvbox Dark)
+# I3WM CONFIGURATION (Theme: Catppuccin Mocha / mauve)
 # ==========================================
 
 set $mod Mod4
@@ -37,14 +37,14 @@ gaps outer 5
 smart_gaps on
 # (sin smart_borders: i3 lo ignora por deprecated si se combina con hide_edge_borders)
 
-# Colors (Gruvbox Dark Palette)
-# bg: #282828, bg-alt: #3c3836, fg: #ebdbb2, accent: #fabd2f, urgent: #fb4934, muted: #a89984
+# Colors (Catppuccin Mocha Palette)
+# bg #1e1e2e, surface0 #313244, text #cdd6f4, mauve #cba6f7, red #f38ba8, overlay0 #6c7086
 
 # class                 border  backgr. text    indicator child_border
-client.focused          #fabd2f #282828 #ebdbb2 #fabd2f   #fabd2f
-client.focused_inactive #3c3836 #3c3836 #a89984 #3c3836   #3c3836
-client.unfocused        #282828 #282828 #a89984 #282828   #282828
-client.urgent           #fb4934 #fb4934 #282828 #fb4934   #fb4934
+client.focused          #cba6f7 #1e1e2e #cdd6f4 #cba6f7   #cba6f7
+client.focused_inactive #313244 #313244 #a6adc8 #313244   #313244
+client.unfocused        #1e1e2e #1e1e2e #6c7086 #1e1e2e   #1e1e2e
+client.urgent           #f38ba8 #f38ba8 #1e1e2e #f38ba8   #f38ba8
 
 # --- KEYBINDS ---
 
@@ -127,7 +127,7 @@ bindsym $mod+Ctrl+Shift+w exec ~/.config/i3/live-wp.sh ~/.config/i3/live-wallpap
 bindsym $mod+Ctrl+l exec ~/.config/i3/lock.sh
 bindsym XF86ScreenSaver exec ~/.config/i3/lock.sh
 exec --no-startup-id sh -c "command -v xss-lock >/dev/null && xss-lock --transfer-sleep-lock -- ~/.config/i3/lock.sh"
-# Powermenu rofi gruvbox (reemplaza i3-nagbar feo)
+# Powermenu rofi catppuccin (reemplaza i3-nagbar feo)
 bindsym $mod+Shift+x exec ~/.config/i3/powermenu.sh
 # Screenshots (maim + xclip)
 bindsym Print exec ~/.config/i3/screenshot.sh select

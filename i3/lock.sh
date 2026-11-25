@@ -1,15 +1,15 @@
 #!/bin/bash
-# lock.sh - pantalla de bloqueo con tema Gruvbox Dark
+# lock.sh - pantalla de bloqueo con tema Catppuccin Mocha
 # Uso: lock.sh [ruta_wallpaper]  (default: ~/.config/i3/wallpaper.jpg, luego ~/Pictures/wallpapers4rice/debian/debian_1.jpg)
-# Soporta: i3lock-color (recomendado, anillo gruvbox) o i3lock clasico (fallback)
-# Paleta: bg #282828, bg-alt #3c3836, fg #ebdbb2, accent #fabd2f, urgent #fb4934, muted #a89984
+# Soporta: i3lock-color (recomendado, anillo mauve) o i3lock clasico (fallback)
+# Paleta: bg #1e1e2e, surface0 #313244, text #cdd6f4, mauve #cba6f7, red #f38ba8, overlay0 #6c7086
 
-BG="282828"
-BG_ALT="3c3836"
-FG="ebdbb2"
-ACCENT="fabd2f"
-URGENT="fb4934"
-MUTED="a89984"
+BG="1e1e2e"
+BG_ALT="313244"
+FG="cdd6f4"
+ACCENT="cba6f7"
+URGENT="f38ba8"
+MUTED="6c7086"
 TRANSPARENT="00000000"
 
 if [ -n "$1" ] && [ -f "$1" ]; then
@@ -23,7 +23,7 @@ else
 fi
 
 msg_falta() {
-    echo "lock: instala i3lock (sudo apt install i3lock). Para anillo gruvbox completo usa i3lock-color." >&2
+    echo "lock: instala i3lock (sudo apt install i3lock). Para anillo Catppuccin completo usa i3lock-color." >&2
     command -v notify-send >/dev/null 2>&1 && notify-send "i3 lock" "Instala i3lock: sudo apt install i3lock"
     exit 1
 }
@@ -40,7 +40,7 @@ trap reanudar_dunst EXIT
 if command -v i3lock-color >/dev/null 2>&1; then
     LOCK_BIN="i3lock-color"
 elif command -v i3lock >/dev/null 2>&1; then
-    # i3lock clasico de Debian: sin anillo, fondo solido gruvbox + imagen si existe
+    # i3lock clasico de Debian: sin anillo, fondo solido Catppuccin + imagen si existe
     # (sin exec: al desbloquear se reanudan las notificaciones; con exec el trap EXIT jamas corre)
     pausar_dunst
     if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
@@ -54,7 +54,7 @@ else
     msg_falta
 fi
 
-# --- i3lock-color: gruvbox ring style ---
+# --- i3lock-color: Catppuccin Mocha ring style (mauve) ---
 IMG_ARGS=()
 if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
     IMG_ARGS=(-i "$WALLPAPER")
@@ -93,7 +93,7 @@ pausar_dunst
     --clock \
     --time-str="%H:%M" \
     --date-str="%Y-%m-%d" \
-    --greeter-text="gruvbox" \
+    --greeter-text="catppuccin" \
     --indicator
 reanudar_dunst
 exit 0
